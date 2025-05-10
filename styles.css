@@ -29,6 +29,13 @@ button {
     transition: background 0.2s, transform 0.2s;
 }
 
+.button-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
 button:hover {
     background: #ff69b4;
     transform: scale(1.05);

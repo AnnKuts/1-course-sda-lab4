@@ -126,13 +126,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function drawSelfLoop(nodeX, nodeY, directed) {
-        const arcR = RAD * 0.75;           // радіус петлі
-        const offset = RAD + 10;     // відступ від центру вершини
+        const arcR = RAD * 0.75;
+        const offset = RAD + 10;
 
 
         const dx = nodeX - centerX;
         const dy = nodeY - centerY;
-        let theta = Math.atan2(dy, dx) * 180 / Math.PI; // градуси
+        let theta = Math.atan2(dy, dx) * 180 / Math.PI;
         if (theta < 0) theta += 360;
         let cx, cy, start, end;
         if (theta >= 315 || theta < 45) {
@@ -160,7 +160,6 @@ document.addEventListener("DOMContentLoaded", () => {
             start = Math.PI / 4;
             end = -Math.PI / 4;
         }
-        //into radians
         const s = start * Math.PI / 180;
         const e = end * Math.PI / 180;
 
@@ -249,8 +248,40 @@ document.addEventListener("DOMContentLoaded", () => {
             ctx.fillText(i + 1, positions[i].x, positions[i].y);
         }
     }
+    function drawCondensedGraph(matrix) {
+        ctx.clearRect(0, 0, w, h);
+        ctx.strokeStyle = "#333";
+        ctx.fillStyle = "#000";
 
-    //initialize
+        // edges
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                if (!matrix[i][j]) continue;
+                if (i === j) continue;
+
+                const p1 = positions[i], p2 = positions[j];
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+        }
+
+        // verticles
+        for (let i = 0; i < n; i++) {
+            ctx.beginPath();
+            ctx.fillStyle = "#fff";
+            ctx.arc(positions[i].x, positions[i].y, RAD, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "#000";
+            ctx.font = "14px Times New Roman";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(i + 1, positions[i].x, positions[i].y);
+        }
+    }
+//initialize
     const answer = prompt("k1 or k2?");
     const selectedK = (answer === "k2") ? k2 : k1;
 
@@ -259,37 +290,41 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error("Invalid input: only k1 or k2 is allowed");
     }
 
-    const dirMatrix = genDirMatrix(selectedK);
-    const undirMatrix = genUndirMatrix(dirMatrix);
-
-    function updateButtons(selectedK) {
+    function updateButtons() {
         const btnUndirected = document.getElementById("btnUndirected");
         const btnCondense = document.getElementById("btnCondense");
 
-        if (selectedK === k2) {
+        if (answer === "k2") {
             btnUndirected.style.display = "none";
             btnCondense.style.display = "inline-block";
-            // btnCond.onclick = () => {
-            //     console.clear();
-            //     printMatrix(undirMatrix, Condensed Matrix using k2);
-            //     drawCondensedGraph(dirMatrix);
         } else {
             btnUndirected.style.display = "inline-block";
             btnCondense.style.display = "none";
         }
     }
 
-    updateButtons(selectedK);
+    updateButtons();
 
     document.getElementById("btnDirected").onclick = () => {
         console.clear();
-        printMatrix(dirMatrix, Directed Matrix (Adir) using ${answer === "k2" ? "k2" : "k1"});
+        printMatrix(dirMatrix, `Directed Matrix (Adir) using ${answer === "k2" ? "k2" : "k1"}`);
         drawGraph(dirMatrix, true);
     };
 
     document.getElementById("btnUndirected").onclick = () => {
         console.clear();
-        printMatrix(undirMatrix, Undirected Matrix (Aundir) using ${answer === "k2" ? "k2" : "k1"});
+        printMatrix(undirMatrix, `Undirected Matrix (Aundir) using ${answer === "k2" ? "k2" : "k1"}`);
         drawGraph(undirMatrix, false);
     };
+
+    document.getElementById("btnCondense").onclick = () => {
+        console.clear();
+        printMatrix(undirMatrix, `Condensed Matrix using k2`);
+        drawGraph(undirMatrix, false);
+    };
+
+    const dirMatrix = genDirMatrix(selectedK);
+    const undirMatrix = genUndirMatrix(dirMatrix);
+
+    drawGraph(dirMatrix, true);
 });
