@@ -262,15 +262,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const dirMatrix = genDirMatrix(selectedK);
     const undirMatrix = genUndirMatrix(dirMatrix);
 
+    function updateButtons(selectedK) {
+        const btnUndirected = document.getElementById("btnUndirected");
+        const btnCondense = document.getElementById("btnCondense");
+
+        if (selectedK === k2) {
+            btnUndirected.style.display = "none";
+            btnCondense.style.display = "inline-block";
+            // btnCond.onclick = () => {
+            //     console.clear();
+            //     printMatrix(undirMatrix, Condensed Matrix using k2);
+            //     drawCondensedGraph(dirMatrix);
+        } else {
+            btnUndirected.style.display = "inline-block";
+            btnCondense.style.display = "none";
+        }
+    }
+
+    updateButtons(selectedK);
+
     document.getElementById("btnDirected").onclick = () => {
         console.clear();
-        printMatrix(dirMatrix, `Directed Matrix (Adir) using ${answer === "k2" ? "k2" : "k1"}`);
+        printMatrix(dirMatrix, Directed Matrix (Adir) using ${answer === "k2" ? "k2" : "k1"});
         drawGraph(dirMatrix, true);
     };
 
     document.getElementById("btnUndirected").onclick = () => {
         console.clear();
-        printMatrix(undirMatrix, `Undirected Matrix (Aundir) using ${answer === "k2" ? "k2" : "k1"}`);
+        printMatrix(undirMatrix, Undirected Matrix (Aundir) using ${answer === "k2" ? "k2" : "k1"});
         drawGraph(undirMatrix, false);
     };
 });
