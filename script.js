@@ -47,7 +47,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Виведення матриці
     function printMatrix(matrix, title) {
         console.log(`\n${title}:`);
-        matrix.forEach(row => console.log(row.join(" ")));
+        for (let i = 0; i < matrix.length; i++) {
+            console.log(matrix[i].map(v => String(v).padStart(2, ' ')).join(" "));
+        }
     }
 
     const w = canvas.width;
@@ -411,7 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const condensedMatrix = condensationMatrix(matrix, components);
 
         // Створюємо мітки для компонент конденсованого графа
-        const compLabels = components.map(comp => comp.join(','));
+        const compLabels = components.map((_, idx) => `C${idx + 1}`);
 
         // Малюємо конденсований граф з мітками
         drawGraph(condensedMatrix, true, compLabels);
@@ -553,9 +555,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let mode = "k1";
 
     function askForMode() {
-        const answer = prompt("Виберіть режим (k1 або k2):", "k1");
+        const answer = prompt("k1 or k2?", "k1");
         if (answer !== "k1" && answer !== "k2") {
-            alert("Неправильний ввід: дозволено тільки k1 або k2");
+            alert("Incorrect input. Only k1 or k2 is allowed.");
             return askForMode();
         }
         return answer;
@@ -584,22 +586,29 @@ document.addEventListener("DOMContentLoaded", () => {
     // Обробники подій для кнопок
     document.getElementById("btnDirected").onclick = () => {
         console.clear();
-        printMatrix(dirMatrix, `Матриця суміжності (Adir) для ${mode}`);
+        document.querySelector('.console-warning').classList.remove('visible');
+        printMatrix(dirMatrix, `Directed matrix (Adir)`);
         drawGraph(dirMatrix, true);
     };
 
     document.getElementById("btnUndirected").onclick = () => {
         console.clear();
-        printMatrix(undirMatrix, `Неорієнтована матриця суміжності (Aundir) для ${mode}`);
+        document.querySelector('.console-warning').classList.remove('visible');
+        printMatrix(undirMatrix, `Undirected matrix (Aundir)`);
         drawGraph(undirMatrix, false);
     };
 
     document.getElementById("btnCondense").onclick = () => {
         console.clear();
+        document.querySelector('.console-warning').classList.remove('visible');
         const R = transitiveClosure(dirMatrix);
         const S = strongConnectivityMatrix(R);
         const components = getStrongComponents(S);
-        console.log("Компоненти сильної зв'язності:", components);
+        console.log("\n5) Компоненти сильної зв'язності:");
+        components.forEach((comp, index) => {
+            console.log(`  C${index + 1} = { ${comp.join(", ")} }`);
+        });
+
 
         printMatrix(S, "Матриця сильної зв'язності:");
         console.log("\nКонденсований граф:");
@@ -611,29 +620,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("btnCalculate").onclick = () => {
         console.clear();
+        document.querySelector('.console-warning').classList.add('visible');
         if (mode === "k1") {
             // Обчислення для k1
             console.log('=== Результати для k1 ===');
             const { outDeg, inDeg, dirDeg, undirDeg } = computeDegrees(dirMatrix, undirMatrix);
-            printMatrix(dirMatrix, 'Матриця суміжності Adir (k1)');
-            printMatrix(undirMatrix, 'Неорієнтована матриця суміжності Aundir (k1)');
+            printMatrix(dirMatrix, 'Directed matrix (Adir)');
+            printMatrix(undirMatrix, 'Undirected matrix (Aundir)');
 
             console.log('\n1) Степені вершин:');
             dirDeg.forEach((d,i) => console.log(` вершина ${i+1}: степінь = ${d}`));
 
-            console.log('\n2) Напівстепені:');
+            console.log('\n2) Напівстепені вершин:');
             inDeg.forEach((d,i) => console.log(` вершина ${i+1}: вхід = ${d}, вихід = ${outDeg[i]}`));
 
-            console.log(`\n3) Регулярність (орієнтований): ${isRegular(dirDeg) ? 'так' : 'ні'}${isRegular(dirDeg)? ', d=' + dirDeg[0] : ''}`);
-            console.log(`   Регулярність (неорієнтований): ${isRegular(undirDeg) ? 'так' : 'ні'}${isRegular(undirDeg)? ', d=' + undirDeg[0] : ''}`);
+console.log(`\n3) Регулярний (Adir):`);
+console.log(`   ${isRegular(dirDeg) ? 'так' : 'ні'}${isRegular(dirDeg)? ', d=' + dirDeg[0] : ''}`);
+console.log(`   Регулярний (Aundir):`);
+console.log(`   ${isRegular(undirDeg) ? 'так' : 'ні'}${isRegular(undirDeg)? ', d=' + undirDeg[0] : ''}`);
 
             const { hanging, isolated } = findHangingAndIsolated(undirDeg);
-            console.log(`\n4) Висячі вершини: [${hanging}], Ізольовані вершини: [${isolated}]`);
+            console.log("\n4) Висячі вершини:");
+            if (hanging.length > 0) {
+                hanging.forEach(v => console.log(`   - вершина ${v}`));
+            } else {
+                console.log("   немає");
+            }
+
+            console.log("   Ізольовані вершини:");
+            if (isolated.length > 0) {
+                isolated.forEach(v => console.log(`   - вершина ${v}`));
+            } else {
+                console.log("   немає");
+            }
+
 
             drawGraph(dirMatrix, true);
         } else {
             // Обчислення для k2
             console.log('=== Результати для k2 ===');
+            printMatrix(dirMatrix, 'Directed matrix (Adir)');
             const { outDeg, inDeg, dirDeg, undirDeg } = computeDegrees(dirMatrix, undirMatrix);
 
             console.log('\n1) Напівстепені та степені:');
@@ -646,9 +672,6 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log('\n   Шляхи довжини 3:');
             const paths3 = findPathsOfLength(dirMatrix, 3).slice(0, 20); // Обмежуємо до 20 шляхів для читабельності
             paths3.forEach(path => console.log(`   ${path.join(' -> ')}`));
-            if (findPathsOfLength(dirMatrix, 3).length > 20) {
-                console.log(`   ... (ще ${findPathsOfLength(dirMatrix, 3).length - 20} шляхів)`);
-            }
 
             const R = transitiveClosure(dirMatrix);
             printMatrix(R, '\n3) Матриця досяжності');
@@ -657,7 +680,10 @@ document.addEventListener("DOMContentLoaded", () => {
             printMatrix(S, '\n4) Матриця сильної зв\'язності');
 
             const comps = getStrongComponents(S);
-            console.log('\n5) Компоненти сильної зв\'язності:', comps);
+            console.log('\n5) Компоненти сильної зв\'язності:');
+            comps.forEach((comp, index) => {
+                console.log(`  C${index + 1} = { ${comp.join(", ")} }`);
+            });
 
             const C = buildCondensationGraph(dirMatrix, comps);
             printMatrix(C, '\n6) Матриця конденсації');

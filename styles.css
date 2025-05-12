@@ -40,3 +40,20 @@ button:hover {
     background: #ff69b4;
     transform: scale(1.05);
 }
+.console-warning {
+    background-color: #fff0f5;
+    color: #d81b60;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1em;
+    border: 1px dashed #ff85a2;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: none;
+}
+
+.console-warning.visible {
+    display: block;
+}
