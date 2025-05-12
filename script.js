@@ -615,8 +615,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.log("   немає");
             }
 
-
-            drawGraph(dirMatrix, true);
         } else {
             console.log('=== Результати для k2 ===');
             printMatrix(dirMatrix, 'Directed matrix (Adir)');
@@ -660,8 +658,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const C = buildCondensationGraph(dirMatrix, comps);
             printMatrix(C, '\n6) Матриця конденсації');
-
-            drawCondensedGraph(dirMatrix, comps);
         }
     };
 
