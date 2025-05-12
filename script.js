@@ -9,6 +9,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const k1 = 1.0 - n3 * 0.01 - n4 * 0.01 - 0.3; // 0.68
     const k2 = 1.0 - n3 * 0.005 - n4 * 0.005 - 0.27; // 0.72
 
+    function genDirMatrix(k) {
+        return Array.from({ length: n }, (_, i) =>
+            Array.from({ length: n }, (_, j) => {
+                const base = i + j + 2;
+                const m = Math.floor(
+                    Math.abs(Math.sin((i + 1) * 17 + (j + 1) * 31 + seed * 13)) * 50
+                );
+                const random = base + 1000 * m;
+                return Math.floor(k * random) % 2;
+            })
+        );
+    }
+
+
+
+    function genUndirMatrix(dir) {
+        const undir = Array.from({length: n}, () => Array(n).fill(0));
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                if (dir[i][j] || dir[j][i]) undir[i][j] = undir[j][i] = 1;
+            }
+        }
+        return undir;
+    }
+
     function removeBidirectionalEdges(matrix) {
         const n = matrix.length;
         const copy = matrix.map(row => row.slice());
@@ -21,24 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
         return copy;
-    }
-
-    function genDirMatrix(selectedK) {
-        return Array.from({length: n}, (_, i) =>
-            Array.from({length: n}, (_, j) =>
-                Math.floor(selectedK * ((i + 1) + (j + 1))) % 2
-            )
-        );
-    }
-
-    function genUndirMatrix(dir) {
-        const undir = Array.from({length: n}, () => Array(n).fill(0));
-        for (let i = 0; i < n; i++) {
-            for (let j = 0; j < n; j++) {
-                if (dir[i][j] || dir[j][i]) undir[i][j] = undir[j][i] = 1;
-            }
-        }
-        return undir;
     }
 
     function printMatrix(matrix, title) {
