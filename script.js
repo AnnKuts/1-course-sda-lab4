@@ -10,35 +10,28 @@ document.addEventListener("DOMContentLoaded", () => {
     const k1 = 1.0 - n3 * 0.01 - n4 * 0.01 - 0.3; // 0.68
     const k2 = 1.0 - n3 * 0.005 - n4 * 0.005 - 0.27; // 0.72
 
-    // Алгоритм Парка-Міллера
-    function genRand(seed) {
-        const MOD = 2147483647;
-        let val = seed % MOD;
-        return function () {
-            val = (val * 16807) % MOD;
-            return (val - 1) / MOD;
-        };
-    }
+    // Функція для видалення двонаправлених ребер
+    function removeBidirectionalEdges(matrix) {
+        const n = matrix.length;
+        const copy = matrix.map(row => row.slice());   // глибока копія
 
-    const rand = genRand(seed);
-
-    // Генерація матриці
-    function genDirMatrix(selectedK) {
-        const raw = Array.from({length: n}, () =>
-            Array.from({length: n}, () => rand() * 2)
-        );
-        const dir = raw.map(row => row.map(v => (v * selectedK >= 1 ? 1 : 0)));
-
-        // Якщо існує двонаправлене ребро, випадковим чином видаляємо одну стрілку
         for (let i = 0; i < n; i++) {
-            for (let j = i + 1; j < n; j++) {
-                if (dir[i][j] && dir[j][i]) {
-                    if (rand() < 0.5) dir[i][j] = 0;
-                    else dir[j][i] = 0;
+            for (let j = i + 1; j < n; j++) {          // тільки над діагоналлю
+                if (copy[i][j] && copy[j][i]) {
+                    copy[j][i] = 0;                    // залишаємо стрілку i → j
                 }
             }
         }
-        return dir;
+        return copy;   // петлі (i === j) без змін
+    }
+
+    // Генерація матриці
+    function genDirMatrix(selectedK) {
+        return Array.from({ length: n }, (_, i) =>
+            Array.from({ length: n }, (_, j) =>
+                Math.floor(selectedK * ((i + 1) + (j + 1))) % 2
+            )
+        );
     }
 
     function genUndirMatrix(dir) {
@@ -97,103 +90,213 @@ document.addEventListener("DOMContentLoaded", () => {
         return Math.hypot(dx, dy);
     }
 
-    function drawArrow(p1, p2, cp = null) {
+    function drawArrow(p1, p2, cp = null, labelSize = 0) {
         let angle;
+        const nodeRadius = RAD + labelSize; // Adjust radius based on label size
+
         if (cp) {
-            const t = 0.95;
+            // For curved arrows, improve the positioning
+            // Calculate point along the curve using Bezier formula
+            const t = 0.95; // Position parameter (0-1)
             const x = (1 - t) ** 2 * p1.x + 2 * (1 - t) * t * cp.x + t ** 2 * p2.x;
             const y = (1 - t) ** 2 * p1.y + 2 * (1 - t) * t * cp.y + t ** 2 * p2.y;
+
+            // Calculate tangent direction at this point
             const dx = 2 * (1 - t) * (cp.x - p1.x) + 2 * t * (p2.x - cp.x);
             const dy = 2 * (1 - t) * (cp.y - p1.y) + 2 * t * (p2.y - cp.y);
             angle = Math.atan2(dy, dx);
-            p2 = {x, y};
+
+            // Vector from vertex center to arrow point
+            const vx = x - p2.x;
+            const vy = y - p2.y;
+            const dist = Math.sqrt(vx * vx + vy * vy);
+
+            // Normalized vector
+            const nvx = vx / dist;
+            const nvy = vy / dist;
+
+            // Place arrow at node boundary
+            const arrowX = p2.x + nvx * nodeRadius;
+            const arrowY = p2.y + nvy * nodeRadius;
+
+            p2 = {x: arrowX, y: arrowY};
         } else {
-            const dx = p2.x - p1.x, dy = p2.y - p1.y;
+            // For straight lines
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
             angle = Math.atan2(dy, dx);
+
+            // Place arrow at node boundary
             p2 = {
-                x: p2.x - RAD * Math.cos(angle),
-                y: p2.y - RAD * Math.sin(angle)
+                x: p2.x - nodeRadius * Math.cos(angle),
+                y: p2.y - nodeRadius * Math.sin(angle)
             };
         }
 
+        // Draw the arrow head
+        const arrowSize = 10;
         ctx.beginPath();
         ctx.moveTo(p2.x, p2.y);
         ctx.lineTo(
-            p2.x - 10 * Math.cos(angle - Math.PI / 8),
-            p2.y - 10 * Math.sin(angle - Math.PI / 8)
+            p2.x - arrowSize * Math.cos(angle - Math.PI / 8),
+            p2.y - arrowSize * Math.sin(angle - Math.PI / 8)
         );
         ctx.lineTo(
-            p2.x - 10 * Math.cos(angle + Math.PI / 8),
-            p2.y - 10 * Math.sin(angle + Math.PI / 8)
+            p2.x - arrowSize * Math.cos(angle + Math.PI / 8),
+            p2.y - arrowSize * Math.sin(angle + Math.PI / 8)
         );
         ctx.closePath();
         ctx.fill();
     }
+        function drawSelfLoop(nodeX, nodeY, directed, idx) {
+            // Keep existing parameters
+            let arcScale = 1.0;
+            let extraOffset = 0;
+            let forceInvert = false;
+            let angularSpan = 3;
 
-    function drawSelfLoop(nodeX, nodeY, directed) {
-        const arcR = RAD * 0.75;
-        const offset = RAD + 10;
+            if (idx === 0 || idx === 9) {
+                arcScale = 1;
+                extraOffset = 0;
+            }
+            if (idx === 6) {
+                forceInvert = true;
+            }
 
-        const dx = nodeX - centerX;
-        const dy = nodeY - centerY;
-        let theta = Math.atan2(dy, dx) * 180 / Math.PI;
-        if (theta < 0) theta += 360;
-        let cx, cy, start, end;
-        if (theta >= 315 || theta < 45) {
-            // right
-            cx = nodeX + offset;
-            cy = nodeY;
-            start = -135 * Math.PI / 180;
-            end = 135 * Math.PI / 180;
-        } else if (theta >= 45 && theta < 135) {
-            // down
-            cx = nodeX;
-            cy = nodeY + offset;
-            start = -135 * Math.PI / 180;
-            end = 45 * Math.PI / 180;
-        } else if (theta >= 135 && theta < 225) {
-            // left
-            cx = nodeX - offset;
-            cy = nodeY;
-            start = 45 * Math.PI / 180;
-            end = 225 * Math.PI / 180;
-        } else {
-            // up
-            cx = nodeX;
-            cy = nodeY - offset;
-            start = 135 * Math.PI / 180;
-            end = 315 * Math.PI / 180;
+            const arcR = RAD * 0.75 * arcScale;
+            const offset = RAD + 10 + extraOffset;
+
+            const dx = nodeX - centerX;
+            const dy = nodeY - centerY;
+            let theta = Math.atan2(dy, dx) * 180 / Math.PI;
+            if (theta < 0) theta += 360;
+
+            let cx, cy, start, end, ccw;
+            if (theta >= 315 || theta < 45) {
+                cx = nodeX + offset;
+                cy = nodeY;
+                start = -135 * angularSpan * Math.PI / 180;
+                end = 135 * angularSpan * Math.PI / 180;
+                ccw = false;
+            } else if (theta >= 45 && theta < 135) {
+                cx = nodeX;
+                cy = nodeY + offset;
+                start = -135 * angularSpan * Math.PI / 180;
+                end = 45 * angularSpan * Math.PI / 180;
+                ccw = false;
+            } else if (theta >= 135 && theta < 225) {
+                cx = nodeX - offset;
+                cy = nodeY;
+                start = 45 * angularSpan * Math.PI / 180;
+                end = 225 * angularSpan * Math.PI / 180;
+                ccw = true;
+            } else {
+                cx = nodeX;
+                cy = nodeY - offset;
+                start = 135 * angularSpan * Math.PI / 180;
+                end = 315 * angularSpan * Math.PI / 180;
+                ccw = true;
+            }
+
+            if (forceInvert) ccw = !ccw;
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, arcR, ccw ? end : start, ccw ? start : end, ccw);
+            ctx.stroke();
+
+            if (!directed) return;
+
+            // Special handling for vertex 4
+            if (idx === 3) {
+                // Position near the vertex with a specific angle
+                const arrowPositionFactor = ccw ? 0.25 : 0.77;
+                const arrowAngle = ccw ?
+                    start + arrowPositionFactor * (end - start) :
+                    start + arrowPositionFactor * (end - start);
+
+                // Calculate position on the arc
+                const ax = cx + arcR * Math.cos(arrowAngle);
+                const ay = cy + arcR * Math.sin(arrowAngle);
+
+                // Calculate radial direction and rotate it
+                const radialDir = Math.atan2(ay - cy, ax - cx);
+
+                // Add rotation adjustment for vertex 4 (in radians)
+                const rotationAdjustment = Math.PI / 9; // 30 degrees rotation
+
+                // Create adjusted tangent direction with rotation
+                const tangentDir = radialDir + Math.PI/2 * (ccw ? -1 : 1) + rotationAdjustment;
+
+                const L = 0.55 * RAD * 0.75;
+
+                ctx.beginPath();
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(
+                    ax + L * Math.cos(tangentDir - Math.PI/6),
+                    ay + L * Math.sin(tangentDir - Math.PI/6)
+                );
+                ctx.lineTo(
+                    ax + L * Math.cos(tangentDir + Math.PI/6),
+                    ay + L * Math.sin(tangentDir + Math.PI/6)
+                );
+                ctx.closePath();
+                ctx.fill();
+            } else if (idx === 9) { // Vertex 10
+                const factor = 1;
+                const arrowAngle = ccw ?
+                    start + factor * (end - start) :
+                    start + (1 - factor) * (end - start);
+
+                const ax = cx + arcR * Math.cos(arrowAngle);
+                const ay = cy + arcR * Math.sin(arrowAngle);
+
+                const arrowDir = Math.atan2(nodeY - ay, nodeX - ax);
+                const L = 0.55 * RAD * 0.75;
+
+                ctx.beginPath();
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(
+                    ax - L * Math.cos(arrowDir - Math.PI/6),
+                    ay - L * Math.sin(arrowDir - Math.PI/6)
+                );
+                ctx.lineTo(
+                    ax - L * Math.cos(arrowDir + Math.PI/6),
+                    ay - L * Math.sin(arrowDir + Math.PI/6)
+                );
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                // Regular calculation for other vertices
+                const arrowAngle = ccw ? start : end;
+                const ax = cx + arcR * Math.cos(arrowAngle);
+                const ay = cy + arcR * Math.sin(arrowAngle);
+
+                const arrowDir = Math.atan2(nodeY - ay, nodeX - ax);
+                const L = 0.55 * RAD * 0.75;
+
+                ctx.beginPath();
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(
+                    ax - L * Math.cos(arrowDir - Math.PI/6),
+                    ay - L * Math.sin(arrowDir - Math.PI/6)
+                );
+                ctx.lineTo(
+                    ax - L * Math.cos(arrowDir + Math.PI/6),
+                    ay - L * Math.sin(arrowDir + Math.PI/6)
+                );
+                ctx.closePath();
+                ctx.fill();
+            }
         }
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, arcR, start, end, false);
-        ctx.stroke();
-
-        if (!directed) return;
-
-        const ax = cx + arcR * Math.cos(end);
-        const ay = cy + arcR * Math.sin(end);
-        const arrowAngle = Math.atan2(nodeY - ay, nodeX - ax);
-        const L = 0.55 * arcR;
-
-        ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(
-            ax - L * Math.cos(arrowAngle - Math.PI / 6),
-            ay - L * Math.sin(arrowAngle - Math.PI / 6)
-        );
-        ctx.lineTo(
-            ax - L * Math.cos(arrowAngle + Math.PI / 6),
-            ay - L * Math.sin(arrowAngle + Math.PI / 6)
-        );
-        ctx.closePath();
-        ctx.fill();
-    }
-
-    // Функція малювання графа
     function drawGraph(matrix, directed, nodeLabels = null) {
-        const nodeCount = matrix.length;
+        // Видаляємо двонаправлені ребра, залишаючи лише однонаправлені
+        const unidirectionalMatrix = directed ? removeBidirectionalEdges(matrix) : matrix;
+
+        const nodeCount = unidirectionalMatrix.length;
         const nodePos = generatePositions(nodeCount);
+
+        // Calculate extra space needed for labels if nodeLabels exist
+        const labelSizeAdjustment = nodeLabels ? 10 : 0; // Add 10px for each character in label
 
         ctx.clearRect(0, 0, w, h);
         ctx.strokeStyle = "#333";
@@ -202,14 +305,17 @@ document.addEventListener("DOMContentLoaded", () => {
         // ребра
         for (let i = 0; i < nodeCount; i++) {
             for (let j = 0; j < nodeCount; j++) {
-                if (!matrix[i][j]) continue;
+                // Перевірка наявності ребра з урахуванням петель
+                if (!unidirectionalMatrix[i][j]) continue;
                 if (!directed && j < i) continue;
 
                 if (i === j) {
-                    drawSelfLoop(nodePos[i].x, nodePos[i].y, directed);
+                    // Малювання петлі
+                    drawSelfLoop(nodePos[i].x, nodePos[i].y, directed, i);
                     continue;
                 }
 
+                // Решта коду для малювання ребер залишається без змін
                 const p1 = nodePos[i], p2 = nodePos[j];
                 let curved = false, cp = null;
                 for (let k2 = 0; k2 < nodeCount; k2++) {
@@ -234,15 +340,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 else ctx.lineTo(p2.x, p2.y);
                 ctx.stroke();
 
-                if (directed) drawArrow(p1, p2, curved ? cp : null);
+                if (directed) {
+                    // Pass label size adjustment for proper arrow placement
+                    drawArrow(p1, p2, curved ? cp : null, nodeLabels ? nodeLabels[j].length * 3 : 0);
+                }
             }
         }
 
-        // вершини
+        // Draw nodes with adjusted size for labels
         for (let i = 0; i < nodeCount; i++) {
+            const nodeR = nodeLabels ? Math.max(RAD, RAD + nodeLabels[i].length * 3) : RAD;
+
             ctx.beginPath();
             ctx.fillStyle = "#fff";
-            ctx.arc(nodePos[i].x, nodePos[i].y, RAD, 0, 2 * Math.PI);
+            ctx.arc(nodePos[i].x, nodePos[i].y, nodeR, 0, 2 * Math.PI);
             ctx.fill();
             ctx.stroke();
             ctx.fillStyle = "#000";
@@ -250,12 +361,10 @@ document.addEventListener("DOMContentLoaded", () => {
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            // Використовуємо спеціальні мітки для вершин, якщо вони є
             const label = nodeLabels ? nodeLabels[i] : (i + 1);
             ctx.fillText(label, nodePos[i].x, nodePos[i].y);
         }
     }
-
     // Функція для створення матриці конденсації
     function condensationMatrix(adj, components) {
         const m = components.length;
