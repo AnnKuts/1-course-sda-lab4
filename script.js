@@ -525,11 +525,12 @@ document.addEventListener("DOMContentLoaded", () => {
     let mode = "k1";
 
     function askForMode() {
-        const answer = prompt("k1 or k2?", "k1");
-        if (answer !== "k1" && answer !== "k2") {
-            alert("Incorrect input. Only k1 or k2 is allowed.");
-            return askForMode();
-        }
+        let answer;
+        do {
+            answer = prompt("k1 or k2?", "k1");
+            if (answer === null) return "k1";
+            answer = answer.trim().toLowerCase();
+        } while (answer !== "k1" && answer !== "k2");
         return answer;
     }
 
@@ -665,6 +666,5 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     drawGraph(dirMatrix, true);
-    console.log(`Граф ініціалізовано в режимі ${mode} (k = ${selectedK.toFixed(2)})`);
-    console.log(`Загальна кількість вершин: ${n}`);
+    console.log(`Граф ініціалізовано в режимі ${mode} (${mode} = ${selectedK.toFixed(2)})`);
 });
