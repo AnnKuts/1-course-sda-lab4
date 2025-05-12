@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
-    //parametres
+    // Параметри
     const seed = 4111;
     const n3 = 1;
     const n4 = 1;
@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const k1 = 1.0 - n3 * 0.01 - n4 * 0.01 - 0.3; // 0.68
     const k2 = 1.0 - n3 * 0.005 - n4 * 0.005 - 0.27; // 0.72
 
-    //Park–Miller's algorythm
+    // Алгоритм Парка-Міллера
     function genRand(seed) {
         const MOD = 2147483647;
         let val = seed % MOD;
@@ -22,14 +22,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const rand = genRand(seed);
 
-    //matrix generation
+    // Генерація матриці
     function genDirMatrix(selectedK) {
         const raw = Array.from({length: n}, () =>
             Array.from({length: n}, () => rand() * 2)
         );
         const dir = raw.map(row => row.map(v => (v * selectedK >= 1 ? 1 : 0)));
 
-        //if a bidirectional edge exists, randomly remove one arrow
+        // Якщо існує двонаправлене ребро, випадковим чином видаляємо одну стрілку
         for (let i = 0; i < n; i++) {
             for (let j = i + 1; j < n; j++) {
                 if (dir[i][j] && dir[j][i]) {
@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return undir;
     }
 
-    //console print
+    // Виведення матриці
     function printMatrix(matrix, title) {
         console.log(`\n${title}:`);
         matrix.forEach(row => console.log(row.join(" ")));
@@ -64,13 +64,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const centerY = h / 2;
     const radius = 280;
 
-    const positions = Array.from({length: n}, (_, i) => {
-        const angle = (2 * Math.PI * i) / n - Math.PI / 2;
-        return {
-            x: centerX + radius * Math.cos(angle),
-            y: centerY + radius * Math.sin(angle)
-        };
-    });
+    // Генеруємо позиції для вершин
+    function generatePositions(count) {
+        return Array.from({length: count}, (_, i) => {
+            const angle = (2 * Math.PI * i) / count - Math.PI / 2;
+            return {
+                x: centerX + radius * Math.cos(angle),
+                y: centerY + radius * Math.sin(angle)
+            };
+        });
+    }
+
+    const positions = generatePositions(n);
 
     function distanceToLine(p1, p2, p) {
         const A = p.x - p1.x, B = p.y - p1.y;
@@ -129,7 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const arcR = RAD * 0.75;
         const offset = RAD + 10;
 
-
         const dx = nodeX - centerX;
         const dy = nodeY - centerY;
         let theta = Math.atan2(dy, dx) * 180 / Math.PI;
@@ -139,38 +143,36 @@ document.addEventListener("DOMContentLoaded", () => {
             // right
             cx = nodeX + offset;
             cy = nodeY;
-            start = -135;
-            end = 135;
+            start = -135 * Math.PI / 180;
+            end = 135 * Math.PI / 180;
         } else if (theta >= 45 && theta < 135) {
             // down
             cx = nodeX;
             cy = nodeY + offset;
-            start = 225;
-            end = 135;
+            start = -135 * Math.PI / 180;
+            end = 45 * Math.PI / 180;
         } else if (theta >= 135 && theta < 225) {
             // left
             cx = nodeX - offset;
             cy = nodeY;
-            start = Math.PI / 4;
-            end = -45;
+            start = 45 * Math.PI / 180;
+            end = 225 * Math.PI / 180;
         } else {
             // up
             cx = nodeX;
             cy = nodeY - offset;
-            start = Math.PI / 4;
-            end = -Math.PI / 4;
+            start = 135 * Math.PI / 180;
+            end = 315 * Math.PI / 180;
         }
-        const s = start * Math.PI / 180;
-        const e = end * Math.PI / 180;
 
         ctx.beginPath();
-        ctx.arc(cx, cy, arcR, s, end, false);
+        ctx.arc(cx, cy, arcR, start, end, false);
         ctx.stroke();
 
         if (!directed) return;
 
-        const ax = cx + arcR * Math.cos(e);
-        const ay = cy + arcR * Math.sin(e);
+        const ax = cx + arcR * Math.cos(end);
+        const ay = cy + arcR * Math.sin(end);
         const arrowAngle = Math.atan2(nodeY - ay, nodeX - ax);
         const L = 0.55 * arcR;
 
@@ -188,29 +190,31 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.fill();
     }
 
+    // Функція малювання графа
+    function drawGraph(matrix, directed, nodeLabels = null) {
+        const nodeCount = matrix.length;
+        const nodePos = generatePositions(nodeCount);
 
-    //draw
-    function drawGraph(matrix, directed) {
         ctx.clearRect(0, 0, w, h);
         ctx.strokeStyle = "#333";
         ctx.fillStyle = "#000";
 
-        // edges
-        for (let i = 0; i < n; i++) {
-            for (let j = 0; j < n; j++) {
+        // ребра
+        for (let i = 0; i < nodeCount; i++) {
+            for (let j = 0; j < nodeCount; j++) {
                 if (!matrix[i][j]) continue;
                 if (!directed && j < i) continue;
 
                 if (i === j) {
-                    drawSelfLoop(positions[i].x, positions[i].y, directed, i);
+                    drawSelfLoop(nodePos[i].x, nodePos[i].y, directed);
                     continue;
                 }
 
-                const p1 = positions[i], p2 = positions[j];
+                const p1 = nodePos[i], p2 = nodePos[j];
                 let curved = false, cp = null;
-                for (let k2 = 0; k2 < n; k2++) {
+                for (let k2 = 0; k2 < nodeCount; k2++) {
                     if (k2 === i || k2 === j) continue;
-                    if (distanceToLine(p1, p2, positions[k2]) < 25) {
+                    if (distanceToLine(p1, p2, nodePos[k2]) < 25) {
                         curved = true;
                         const mid = {x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2};
                         const perp = {x: -(p2.y - p1.y), y: p2.x - p1.x};
@@ -234,97 +238,307 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // verticles
-        for (let i = 0; i < n; i++) {
+        // вершини
+        for (let i = 0; i < nodeCount; i++) {
             ctx.beginPath();
             ctx.fillStyle = "#fff";
-            ctx.arc(positions[i].x, positions[i].y, RAD, 0, 2 * Math.PI);
+            ctx.arc(nodePos[i].x, nodePos[i].y, RAD, 0, 2 * Math.PI);
             ctx.fill();
             ctx.stroke();
             ctx.fillStyle = "#000";
             ctx.font = "14px Times New Roman";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(i + 1, positions[i].x, positions[i].y);
+
+            // Використовуємо спеціальні мітки для вершин, якщо вони є
+            const label = nodeLabels ? nodeLabels[i] : (i + 1);
+            ctx.fillText(label, nodePos[i].x, nodePos[i].y);
         }
     }
-    function drawCondensedGraph(matrix) {
-        ctx.clearRect(0, 0, w, h);
-        ctx.strokeStyle = "#333";
-        ctx.fillStyle = "#000";
 
-        // edges
+    // Функція для створення матриці конденсації
+    function condensationMatrix(adj, components) {
+        const m = components.length;
+        const C = Array.from({ length: m }, () => Array(m).fill(0));
+        const nodeToComp = {};
+
+        components.forEach((comp, ci) =>
+            comp.forEach(v1 => { nodeToComp[v1 - 1] = ci; })
+        );
+
+        for (let u = 0; u < adj.length; u++) {
+            for (let v = 0; v < adj.length; v++) {
+                if (adj[u][v] === 1) {
+                    const cu = nodeToComp[u], cv = nodeToComp[v];
+                    if (cu !== cv) C[cu][cv] = 1;
+                }
+            }
+        }
+        return C;
+    }
+
+    // Функція для малювання конденсованого графа
+    function drawCondensedGraph(matrix, components) {
+        const condensedMatrix = condensationMatrix(matrix, components);
+
+        // Створюємо мітки для компонент конденсованого графа
+        const compLabels = components.map(comp => comp.join(','));
+
+        // Малюємо конденсований граф з мітками
+        drawGraph(condensedMatrix, true, compLabels);
+    }
+
+    // Обчислення
+    function computeDegrees(dirMatrix, undirMatrix) {
+        const n = dirMatrix.length;
+        const outDeg = Array(n).fill(0);
+        const inDeg  = Array(n).fill(0);
+        const dirDeg = Array(n).fill(0);
+        const undirDeg = Array(n).fill(0);
+
         for (let i = 0; i < n; i++) {
             for (let j = 0; j < n; j++) {
-                if (!matrix[i][j]) continue;
-                if (i === j) continue;
+                if (dirMatrix[i][j]) outDeg[i]++;
+                if (dirMatrix[j][i]) inDeg[i]++;
+                if (undirMatrix[i][j]) undirDeg[i]++;
+            }
+            dirDeg[i] = outDeg[i] + inDeg[i];
+        }
 
-                const p1 = positions[i], p2 = positions[j];
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
+        return { outDeg, inDeg, dirDeg, undirDeg };
+    }
+
+    function isRegular(degrees) {
+        return degrees.every(d => d === degrees[0]);
+    }
+
+    function findHangingAndIsolated(undirDeg) {
+        const hanging  = [];
+        const isolated = [];
+        undirDeg.forEach((d, idx) => {
+            if (d === 0) isolated.push(idx + 1);
+            else if (d === 1) hanging.push(idx + 1);
+        });
+        return { hanging, isolated };
+    }
+
+    function findPathsOfLength(A, K) {
+        const n = A.length, paths = [];
+        function dfs(path) {
+            if (path.length === K+1) {
+                paths.push(path.slice());
+                return;
+            }
+            const u = path[path.length-1] - 1;
+            for (let v = 0; v < n; v++) {
+                if (A[u][v]) {
+                    path.push(v+1);
+                    dfs(path);
+                    path.pop();
+                }
+            }
+        }
+        for (let start = 1; start <= n; start++) dfs([start]);
+        return paths;
+    }
+
+    // Виправлена функція для матриці досяжності
+    function transitiveClosure(A) {
+        const n = A.length;
+        const R = A.map(row => [...row]);
+
+        // Встановлюємо одиниці на діагоналі (кожна вершина досяжна з самої себе)
+        for (let i = 0; i < n; i++) {
+            R[i][i] = 1;
+        }
+
+        for (let k = 0; k < n; k++) {
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (R[i][k] && R[k][j]) {
+                        R[i][j] = 1;
+                    }
+                }
+            }
+        }
+        return R;
+    }
+
+    function strongConnectivityMatrix(R) {
+        const n = R.length;
+        const S = Array.from({ length: n }, () => Array(n).fill(0));
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                if (R[i][j] && R[j][i]) S[i][j] = 1;
+            }
+        }
+        return S;
+    }
+
+    function getStrongComponents(S) {
+        const n = S.length;
+        const visited = Array(n).fill(false);
+        const comps = [];
+
+        for (let i = 0; i < n; i++) {
+            if (!visited[i]) {
+                const comp = [i+1];
+                visited[i] = true;
+
+                for (let j = 0; j < n; j++) {
+                    if (j !== i && S[i][j] && !visited[j]) {
+                        comp.push(j+1);
+                        visited[j] = true;
+                    }
+                }
+
+                comps.push(comp);
             }
         }
 
-        // verticles
-        for (let i = 0; i < n; i++) {
-            ctx.beginPath();
-            ctx.fillStyle = "#fff";
-            ctx.arc(positions[i].x, positions[i].y, RAD, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = "#000";
-            ctx.font = "14px Times New Roman";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(i + 1, positions[i].x, positions[i].y);
+        return comps;
+    }
+
+    function buildCondensationGraph(A, components) {
+        const m = components.length;
+        const C = Array.from({ length: m }, () => Array(m).fill(0));
+        const v2c = {};
+        components.forEach((comp, i) =>
+            comp.forEach(v => v2c[v-1] = i)
+        );
+
+        for (let u = 0; u < A.length; u++) {
+            for (let v = 0; v < A.length; v++) {
+                if (A[u][v]) {
+                    const cu = v2c[u], cv = v2c[v];
+                    if (cu !== cv) C[cu][cv] = 1;
+                }
+            }
         }
-    }
-//initialize
-    const answer = prompt("k1 or k2?");
-    const selectedK = (answer === "k2") ? k2 : k1;
 
-    if (answer !== "k1" && answer !== "k2") {
-        alert("Invalid input: only k1 or k2 is allowed");
-        throw new Error("Invalid input: only k1 or k2 is allowed");
+        return C;
     }
 
-    function updateButtons() {
-        const btnUndirected = document.getElementById("btnUndirected");
-        const btnCondense = document.getElementById("btnCondense");
+    // Ініціалізація з вибором режиму
+    let selectedK = k1;
+    let mode = "k1";
 
-        if (answer === "k2") {
-            btnUndirected.style.display = "none";
-            btnCondense.style.display = "inline-block";
-        } else {
-            btnUndirected.style.display = "inline-block";
-            btnCondense.style.display = "none";
+    function askForMode() {
+        const answer = prompt("Виберіть режим (k1 або k2):", "k1");
+        if (answer !== "k1" && answer !== "k2") {
+            alert("Неправильний ввід: дозволено тільки k1 або k2");
+            return askForMode();
         }
+        return answer;
     }
 
-    updateButtons();
+    // Запитуємо режим
+    mode = askForMode();
+    selectedK = (mode === "k2") ? k2 : k1;
 
+    // Оновлюємо видимість кнопок залежно від режиму
+    const btnUndirected = document.getElementById("btnUndirected");
+    const btnCondense = document.getElementById("btnCondense");
+
+    if (mode === "k2") {
+        btnUndirected.style.display = "none";
+        btnCondense.style.display = "inline-block";
+    } else {
+        btnUndirected.style.display = "inline-block";
+        btnCondense.style.display = "none";
+    }
+
+    // Генеруємо матриці
+    const dirMatrix = genDirMatrix(selectedK);
+    const undirMatrix = genUndirMatrix(dirMatrix);
+
+    // Обробники подій для кнопок
     document.getElementById("btnDirected").onclick = () => {
         console.clear();
-        printMatrix(dirMatrix, `Directed Matrix (Adir) using ${answer === "k2" ? "k2" : "k1"}`);
+        printMatrix(dirMatrix, `Матриця суміжності (Adir) для ${mode}`);
         drawGraph(dirMatrix, true);
     };
 
     document.getElementById("btnUndirected").onclick = () => {
         console.clear();
-        printMatrix(undirMatrix, `Undirected Matrix (Aundir) using ${answer === "k2" ? "k2" : "k1"}`);
+        printMatrix(undirMatrix, `Неорієнтована матриця суміжності (Aundir) для ${mode}`);
         drawGraph(undirMatrix, false);
     };
 
     document.getElementById("btnCondense").onclick = () => {
         console.clear();
-        printMatrix(undirMatrix, `Condensed Matrix using k2`);
-        drawGraph(undirMatrix, false);
+        const R = transitiveClosure(dirMatrix);
+        const S = strongConnectivityMatrix(R);
+        const components = getStrongComponents(S);
+        console.log("Компоненти сильної зв'язності:", components);
+
+        printMatrix(S, "Матриця сильної зв'язності:");
+        console.log("\nКонденсований граф:");
+        const C = buildCondensationGraph(dirMatrix, components);
+        printMatrix(C, "Матриця конденсації:");
+
+        drawCondensedGraph(dirMatrix, components);
     };
 
-    const dirMatrix = genDirMatrix(selectedK);
-    const undirMatrix = genUndirMatrix(dirMatrix);
+    document.getElementById("btnCalculate").onclick = () => {
+        console.clear();
+        if (mode === "k1") {
+            // Обчислення для k1
+            console.log('=== Результати для k1 ===');
+            const { outDeg, inDeg, dirDeg, undirDeg } = computeDegrees(dirMatrix, undirMatrix);
+            printMatrix(dirMatrix, 'Матриця суміжності Adir (k1)');
+            printMatrix(undirMatrix, 'Неорієнтована матриця суміжності Aundir (k1)');
 
+            console.log('\n1) Степені вершин:');
+            dirDeg.forEach((d,i) => console.log(` вершина ${i+1}: степінь = ${d}`));
+
+            console.log('\n2) Напівстепені:');
+            inDeg.forEach((d,i) => console.log(` вершина ${i+1}: вхід = ${d}, вихід = ${outDeg[i]}`));
+
+            console.log(`\n3) Регулярність (орієнтований): ${isRegular(dirDeg) ? 'так' : 'ні'}${isRegular(dirDeg)? ', d=' + dirDeg[0] : ''}`);
+            console.log(`   Регулярність (неорієнтований): ${isRegular(undirDeg) ? 'так' : 'ні'}${isRegular(undirDeg)? ', d=' + undirDeg[0] : ''}`);
+
+            const { hanging, isolated } = findHangingAndIsolated(undirDeg);
+            console.log(`\n4) Висячі вершини: [${hanging}], Ізольовані вершини: [${isolated}]`);
+
+            drawGraph(dirMatrix, true);
+        } else {
+            // Обчислення для k2
+            console.log('=== Результати для k2 ===');
+            const { outDeg, inDeg, dirDeg, undirDeg } = computeDegrees(dirMatrix, undirMatrix);
+
+            console.log('\n1) Напівстепені та степені:');
+            inDeg.forEach((d,i) => console.log(` вершина ${i+1}: вхід = ${d}, вихід = ${outDeg[i]}, сума = ${dirDeg[i]}`));
+
+            console.log('\n2) Шляхи довжини 2:');
+            const paths2 = findPathsOfLength(dirMatrix, 2);
+            paths2.forEach(path => console.log(`   ${path.join(' -> ')}`));
+
+            console.log('\n   Шляхи довжини 3:');
+            const paths3 = findPathsOfLength(dirMatrix, 3).slice(0, 20); // Обмежуємо до 20 шляхів для читабельності
+            paths3.forEach(path => console.log(`   ${path.join(' -> ')}`));
+            if (findPathsOfLength(dirMatrix, 3).length > 20) {
+                console.log(`   ... (ще ${findPathsOfLength(dirMatrix, 3).length - 20} шляхів)`);
+            }
+
+            const R = transitiveClosure(dirMatrix);
+            printMatrix(R, '\n3) Матриця досяжності');
+
+            const S = strongConnectivityMatrix(R);
+            printMatrix(S, '\n4) Матриця сильної зв\'язності');
+
+            const comps = getStrongComponents(S);
+            console.log('\n5) Компоненти сильної зв\'язності:', comps);
+
+            const C = buildCondensationGraph(dirMatrix, comps);
+            printMatrix(C, '\n6) Матриця конденсації');
+
+            drawCondensedGraph(dirMatrix, comps);
+        }
+    };
+
+    // Початково відображаємо орієнтований граф
     drawGraph(dirMatrix, true);
+    console.log(`Граф ініціалізовано в режимі ${mode} (k = ${selectedK.toFixed(2)})`);
+    console.log(`Загальна кількість вершин: ${n}`);
 });
