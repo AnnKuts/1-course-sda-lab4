@@ -2,7 +2,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
-    // Параметри
     const seed = 4111;
     const n3 = 1;
     const n4 = 1;
@@ -10,25 +9,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const k1 = 1.0 - n3 * 0.01 - n4 * 0.01 - 0.3; // 0.68
     const k2 = 1.0 - n3 * 0.005 - n4 * 0.005 - 0.27; // 0.72
 
-    // Функція для видалення двонаправлених ребер
     function removeBidirectionalEdges(matrix) {
         const n = matrix.length;
-        const copy = matrix.map(row => row.slice());   // глибока копія
+        const copy = matrix.map(row => row.slice());
 
         for (let i = 0; i < n; i++) {
-            for (let j = i + 1; j < n; j++) {          // тільки над діагоналлю
+            for (let j = i + 1; j < n; j++) {
                 if (copy[i][j] && copy[j][i]) {
-                    copy[j][i] = 0;                    // залишаємо стрілку i → j
+                    copy[j][i] = 0;
                 }
             }
         }
-        return copy;   // петлі (i === j) без змін
+        return copy;
     }
 
-    // Генерація матриці
     function genDirMatrix(selectedK) {
-        return Array.from({ length: n }, (_, i) =>
-            Array.from({ length: n }, (_, j) =>
+        return Array.from({length: n}, (_, i) =>
+            Array.from({length: n}, (_, j) =>
                 Math.floor(selectedK * ((i + 1) + (j + 1))) % 2
             )
         );
@@ -44,7 +41,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return undir;
     }
 
-    // Виведення матриці
     function printMatrix(matrix, title) {
         console.log(`\n${title}:`);
         for (let i = 0; i < matrix.length; i++) {
@@ -59,7 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const centerY = h / 2;
     const radius = 280;
 
-    // Генеруємо позиції для вершин
     function generatePositions(count) {
         return Array.from({length: count}, (_, i) => {
             const angle = (2 * Math.PI * i) / count - Math.PI / 2;
@@ -94,48 +89,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function drawArrow(p1, p2, cp = null, labelSize = 0) {
         let angle;
-        const nodeRadius = RAD + labelSize; // Adjust radius based on label size
+        const nodeRadius = RAD + labelSize;
 
         if (cp) {
-            // For curved arrows, improve the positioning
-            // Calculate point along the curve using Bezier formula
-            const t = 0.95; // Position parameter (0-1)
+            const t = 0.95;
             const x = (1 - t) ** 2 * p1.x + 2 * (1 - t) * t * cp.x + t ** 2 * p2.x;
             const y = (1 - t) ** 2 * p1.y + 2 * (1 - t) * t * cp.y + t ** 2 * p2.y;
 
-            // Calculate tangent direction at this point
             const dx = 2 * (1 - t) * (cp.x - p1.x) + 2 * t * (p2.x - cp.x);
             const dy = 2 * (1 - t) * (cp.y - p1.y) + 2 * t * (p2.y - cp.y);
             angle = Math.atan2(dy, dx);
 
-            // Vector from vertex center to arrow point
             const vx = x - p2.x;
             const vy = y - p2.y;
             const dist = Math.sqrt(vx * vx + vy * vy);
 
-            // Normalized vector
             const nvx = vx / dist;
             const nvy = vy / dist;
 
-            // Place arrow at node boundary
             const arrowX = p2.x + nvx * nodeRadius;
             const arrowY = p2.y + nvy * nodeRadius;
 
             p2 = {x: arrowX, y: arrowY};
         } else {
-            // For straight lines
             const dx = p2.x - p1.x;
             const dy = p2.y - p1.y;
             angle = Math.atan2(dy, dx);
 
-            // Place arrow at node boundary
             p2 = {
                 x: p2.x - nodeRadius * Math.cos(angle),
                 y: p2.y - nodeRadius * Math.sin(angle)
             };
         }
 
-        // Draw the arrow head
         const arrowSize = 10;
         ctx.beginPath();
         ctx.moveTo(p2.x, p2.y);
@@ -150,14 +136,14 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.closePath();
         ctx.fill();
     }
+
     function drawSelfLoop(nodeX, nodeY, directed, idx) {
-        // Keep existing parameters
         let arcScale = 1.0;
         let extraOffset = 0;
         let forceInvert = false;
         let angularSpan = 3;
 
-        if (idx === 0 || idx === 9|| idx === 7) {
+        if (idx === 0 || idx === 9 || idx === 7) {
             arcScale = 1;
             extraOffset = 0;
         }
@@ -208,8 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!directed) return;
 
-        // Handle specific vertices with custom arrow positions and rotations
-        if (idx === 3 || idx === 4)  { // Vertex 4
+        if (idx === 3 || idx === 4) { // Vertex 4
             const arrowPositionFactor = ccw ? 0.25 : 0.77;
             const arrowAngle = ccw ?
                 start + arrowPositionFactor * (end - start) :
@@ -236,14 +221,10 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             ctx.closePath();
             ctx.fill();
-        }else if (idx === 7) { // Вершина 8
+        } else if (idx === 7) { // Вершина 8
             const arrowAngle = start + (end - start) * 0.5;
-
-            // Координати стрілки на середині дуги
             const ax = cx + arcR * Math.cos(arrowAngle);
             const ay = cy + arcR * Math.sin(arrowAngle);
-
-            // Точна дотична до дуги — напрям стрілки
             const tangentDir = arrowAngle + (ccw ? -1 : 1) * Math.PI / 2.2;
 
             const L = 0.55 * RAD * 0.75;
@@ -259,11 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             ctx.closePath();
             ctx.fill();
-        }
-
-
-
-        else if (idx === 9) { // Vertex 10
+        } else if (idx === 9) {
             const factor = 1;
             const arrowAngle = ccw ?
                 start + factor * (end - start) :
@@ -278,17 +255,16 @@ document.addEventListener("DOMContentLoaded", () => {
             ctx.beginPath();
             ctx.moveTo(ax, ay);
             ctx.lineTo(
-                ax - L * Math.cos(arrowDir - Math.PI/6),
-                ay - L * Math.sin(arrowDir - Math.PI/6)
+                ax - L * Math.cos(arrowDir - Math.PI / 6),
+                ay - L * Math.sin(arrowDir - Math.PI / 6)
             );
             ctx.lineTo(
-                ax - L * Math.cos(arrowDir + Math.PI/6),
-                ay - L * Math.sin(arrowDir + Math.PI/6)
+                ax - L * Math.cos(arrowDir + Math.PI / 6),
+                ay - L * Math.sin(arrowDir + Math.PI / 6)
             );
             ctx.closePath();
             ctx.fill();
         } else {
-            // Regular calculation for other vertices
             const arrowAngle = ccw ? start : end;
             const ax = cx + arcR * Math.cos(arrowAngle);
             const ay = cy + arcR * Math.sin(arrowAngle);
@@ -299,32 +275,27 @@ document.addEventListener("DOMContentLoaded", () => {
             ctx.beginPath();
             ctx.moveTo(ax, ay);
             ctx.lineTo(
-                ax - L * Math.cos(arrowDir - Math.PI/6),
-                ay - L * Math.sin(arrowDir - Math.PI/6)
+                ax - L * Math.cos(arrowDir - Math.PI / 6),
+                ay - L * Math.sin(arrowDir - Math.PI / 6)
             );
             ctx.lineTo(
-                ax - L * Math.cos(arrowDir + Math.PI/6),
-                ay - L * Math.sin(arrowDir + Math.PI/6)
+                ax - L * Math.cos(arrowDir + Math.PI / 6),
+                ay - L * Math.sin(arrowDir + Math.PI / 6)
             );
             ctx.closePath();
             ctx.fill();
         }
     }
+
     function drawGraph(matrix, directed, nodeLabels = null) {
-        // Видаляємо двонаправлені ребра, залишаючи лише однонаправлені
         const unidirectionalMatrix = directed ? removeBidirectionalEdges(matrix) : matrix;
 
         const nodeCount = unidirectionalMatrix.length;
         const nodePos = generatePositions(nodeCount);
-
-        // Calculate extra space needed for labels if nodeLabels exist
-        const labelSizeAdjustment = nodeLabels ? 10 : 0; // Add 10px for each character in label
-
+        const labelSizeAdjustment = nodeLabels ? 10 : 0;
         ctx.clearRect(0, 0, w, h);
         ctx.strokeStyle = "#333";
         ctx.fillStyle = "#000";
-
-        // ребра
         for (let i = 0; i < nodeCount; i++) {
             for (let j = 0; j < nodeCount; j++) {
                 // Перевірка наявності ребра з урахуванням петель
@@ -332,12 +303,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!directed && j < i) continue;
 
                 if (i === j) {
-                    // Малювання петлі
                     drawSelfLoop(nodePos[i].x, nodePos[i].y, directed, i);
                     continue;
                 }
-
-                // Решта коду для малювання ребер залишається без змін
                 const p1 = nodePos[i], p2 = nodePos[j];
                 let curved = false, cp = null;
                 for (let k2 = 0; k2 < nodeCount; k2++) {
@@ -363,13 +331,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 ctx.stroke();
 
                 if (directed) {
-                    // Pass label size adjustment for proper arrow placement
                     drawArrow(p1, p2, curved ? cp : null, nodeLabels ? nodeLabels[j].length * 3 : 0);
                 }
             }
         }
-
-        // Draw nodes with adjusted size for labels
         for (let i = 0; i < nodeCount; i++) {
             const nodeR = nodeLabels ? Math.max(RAD, RAD + nodeLabels[i].length * 3) : RAD;
 
@@ -387,14 +352,16 @@ document.addEventListener("DOMContentLoaded", () => {
             ctx.fillText(label, nodePos[i].x, nodePos[i].y);
         }
     }
-    // Функція для створення матриці конденсації
+
     function condensationMatrix(adj, components) {
         const m = components.length;
-        const C = Array.from({ length: m }, () => Array(m).fill(0));
+        const C = Array.from({length: m}, () => Array(m).fill(0));
         const nodeToComp = {};
 
         components.forEach((comp, ci) =>
-            comp.forEach(v1 => { nodeToComp[v1 - 1] = ci; })
+            comp.forEach(v1 => {
+                nodeToComp[v1 - 1] = ci;
+            })
         );
 
         for (let u = 0; u < adj.length; u++) {
@@ -408,22 +375,16 @@ document.addEventListener("DOMContentLoaded", () => {
         return C;
     }
 
-    // Функція для малювання конденсованого графа
     function drawCondensedGraph(matrix, components) {
         const condensedMatrix = condensationMatrix(matrix, components);
-
-        // Створюємо мітки для компонент конденсованого графа
         const compLabels = components.map((_, idx) => `C${idx + 1}`);
-
-        // Малюємо конденсований граф з мітками
         drawGraph(condensedMatrix, true, compLabels);
     }
 
-    // Обчислення
     function computeDegrees(dirMatrix, undirMatrix) {
         const n = dirMatrix.length;
         const outDeg = Array(n).fill(0);
-        const inDeg  = Array(n).fill(0);
+        const inDeg = Array(n).fill(0);
         const dirDeg = Array(n).fill(0);
         const undirDeg = Array(n).fill(0);
 
@@ -436,49 +397,59 @@ document.addEventListener("DOMContentLoaded", () => {
             dirDeg[i] = outDeg[i] + inDeg[i];
         }
 
-        return { outDeg, inDeg, dirDeg, undirDeg };
+        return {outDeg, inDeg, dirDeg, undirDeg};
     }
+
+    function matMul(A, B) {
+        const n = A.length;
+        const C = Array.from({length: n}, () => Array(n).fill(0));
+        for (let i = 0; i < n; i++)
+            for (let k = 0; k < n; k++) if (A[i][k])
+                for (let j = 0; j < n; j++)
+                    C[i][j] += A[i][k] * B[k][j];
+        return C;
+    }
+
 
     function isRegular(degrees) {
         return degrees.every(d => d === degrees[0]);
     }
 
     function findHangingAndIsolated(undirDeg) {
-        const hanging  = [];
+        const hanging = [];
         const isolated = [];
         undirDeg.forEach((d, idx) => {
             if (d === 0) isolated.push(idx + 1);
             else if (d === 1) hanging.push(idx + 1);
         });
-        return { hanging, isolated };
+        return {hanging, isolated};
     }
 
     function findPathsOfLength(A, K) {
         const n = A.length, paths = [];
+
         function dfs(path) {
-            if (path.length === K+1) {
-                paths.push(path.slice());
+            if (path.length === K + 1) {
+                paths.push(path.map(v => v + 1));
                 return;
             }
-            const u = path[path.length-1] - 1;
+            const u = path[path.length - 1] - 1;
             for (let v = 0; v < n; v++) {
                 if (A[u][v]) {
-                    path.push(v+1);
+                    path.push(v + 1);
                     dfs(path);
                     path.pop();
                 }
             }
         }
+
         for (let start = 1; start <= n; start++) dfs([start]);
         return paths;
     }
 
-    // Виправлена функція для матриці досяжності
     function transitiveClosure(A) {
         const n = A.length;
         const R = A.map(row => [...row]);
-
-        // Встановлюємо одиниці на діагоналі (кожна вершина досяжна з самої себе)
         for (let i = 0; i < n; i++) {
             R[i][i] = 1;
         }
@@ -497,7 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function strongConnectivityMatrix(R) {
         const n = R.length;
-        const S = Array.from({ length: n }, () => Array(n).fill(0));
+        const S = Array.from({length: n}, () => Array(n).fill(0));
         for (let i = 0; i < n; i++) {
             for (let j = 0; j < n; j++) {
                 if (R[i][j] && R[j][i]) S[i][j] = 1;
@@ -513,12 +484,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         for (let i = 0; i < n; i++) {
             if (!visited[i]) {
-                const comp = [i+1];
+                const comp = [i + 1];
                 visited[i] = true;
 
                 for (let j = 0; j < n; j++) {
                     if (j !== i && S[i][j] && !visited[j]) {
-                        comp.push(j+1);
+                        comp.push(j + 1);
                         visited[j] = true;
                     }
                 }
@@ -532,10 +503,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function buildCondensationGraph(A, components) {
         const m = components.length;
-        const C = Array.from({ length: m }, () => Array(m).fill(0));
+        const C = Array.from({length: m}, () => Array(m).fill(0));
         const v2c = {};
         components.forEach((comp, i) =>
-            comp.forEach(v => v2c[v-1] = i)
+            comp.forEach(v => v2c[v - 1] = i)
         );
 
         for (let u = 0; u < A.length; u++) {
@@ -550,7 +521,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return C;
     }
 
-    // Ініціалізація з вибором режиму
     let selectedK = k1;
     let mode = "k1";
 
@@ -563,13 +533,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return answer;
     }
 
-    // Запитуємо режим
     mode = askForMode();
     selectedK = (mode === "k2") ? k2 : k1;
-
-    // Оновлюємо видимість кнопок залежно від режиму
-    const btnUndirected = document.getElementById("btnUndirected");
-    const btnCondense = document.getElementById("btnCondense");
 
     if (mode === "k2") {
         btnUndirected.style.display = "none";
@@ -578,12 +543,9 @@ document.addEventListener("DOMContentLoaded", () => {
         btnUndirected.style.display = "inline-block";
         btnCondense.style.display = "none";
     }
-
-    // Генеруємо матриці
     const dirMatrix = genDirMatrix(selectedK);
     const undirMatrix = genUndirMatrix(dirMatrix);
 
-    // Обробники подій для кнопок
     document.getElementById("btnDirected").onclick = () => {
         console.clear();
         document.querySelector('.console-warning').classList.remove('visible');
@@ -609,7 +571,6 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log(`  C${index + 1} = { ${comp.join(", ")} }`);
         });
 
-
         printMatrix(S, "Матриця сильної зв'язності:");
         console.log("\nКонденсований граф:");
         const C = buildCondensationGraph(dirMatrix, components);
@@ -622,24 +583,23 @@ document.addEventListener("DOMContentLoaded", () => {
         console.clear();
         document.querySelector('.console-warning').classList.add('visible');
         if (mode === "k1") {
-            // Обчислення для k1
             console.log('=== Результати для k1 ===');
-            const { outDeg, inDeg, dirDeg, undirDeg } = computeDegrees(dirMatrix, undirMatrix);
+            const {outDeg, inDeg, dirDeg, undirDeg} = computeDegrees(dirMatrix, undirMatrix);
             printMatrix(dirMatrix, 'Directed matrix (Adir)');
             printMatrix(undirMatrix, 'Undirected matrix (Aundir)');
 
             console.log('\n1) Степені вершин:');
-            dirDeg.forEach((d,i) => console.log(` вершина ${i+1}: степінь = ${d}`));
+            dirDeg.forEach((d, i) => console.log(` вершина ${i + 1}: степінь = ${d}`));
 
             console.log('\n2) Напівстепені вершин:');
-            inDeg.forEach((d,i) => console.log(` вершина ${i+1}: вхід = ${d}, вихід = ${outDeg[i]}`));
+            inDeg.forEach((d, i) => console.log(` вершина ${i + 1}: вхід = ${d}, вихід = ${outDeg[i]}`));
 
-console.log(`\n3) Регулярний (Adir):`);
-console.log(`   ${isRegular(dirDeg) ? 'так' : 'ні'}${isRegular(dirDeg)? ', d=' + dirDeg[0] : ''}`);
-console.log(`   Регулярний (Aundir):`);
-console.log(`   ${isRegular(undirDeg) ? 'так' : 'ні'}${isRegular(undirDeg)? ', d=' + undirDeg[0] : ''}`);
+            console.log(`\n3) Регулярний (Adir):`);
+            console.log(`   ${isRegular(dirDeg) ? 'так' : 'ні'}${isRegular(dirDeg) ? ', d=' + dirDeg[0] : ''}`);
+            console.log(`   Регулярний (Aundir):`);
+            console.log(`   ${isRegular(undirDeg) ? 'так' : 'ні'}${isRegular(undirDeg) ? ', d=' + undirDeg[0] : ''}`);
 
-            const { hanging, isolated } = findHangingAndIsolated(undirDeg);
+            const {hanging, isolated} = findHangingAndIsolated(undirDeg);
             console.log("\n4) Висячі вершини:");
             if (hanging.length > 0) {
                 hanging.forEach(v => console.log(`   - вершина ${v}`));
@@ -657,21 +617,33 @@ console.log(`   ${isRegular(undirDeg) ? 'так' : 'ні'}${isRegular(undirDeg)?
 
             drawGraph(dirMatrix, true);
         } else {
-            // Обчислення для k2
             console.log('=== Результати для k2 ===');
             printMatrix(dirMatrix, 'Directed matrix (Adir)');
-            const { outDeg, inDeg, dirDeg, undirDeg } = computeDegrees(dirMatrix, undirMatrix);
+            const {outDeg, inDeg, dirDeg, undirDeg} = computeDegrees(dirMatrix, undirMatrix);
 
             console.log('\n1) Напівстепені та степені:');
-            inDeg.forEach((d,i) => console.log(` вершина ${i+1}: вхід = ${d}, вихід = ${outDeg[i]}, сума = ${dirDeg[i]}`));
+            inDeg.forEach((d, i) => console.log(` вершина ${i + 1}: вхід = ${d}, вихід = ${outDeg[i]}, сума = ${dirDeg[i]}`));
 
-            console.log('\n2) Шляхи довжини 2:');
-            const paths2 = findPathsOfLength(dirMatrix, 2);
-            paths2.forEach(path => console.log(`   ${path.join(' -> ')}`));
+            const A2 = matMul(dirMatrix, dirMatrix);
+            const A3 = matMul(A2, dirMatrix);
 
-            console.log('\n   Шляхи довжини 3:');
-            const paths3 = findPathsOfLength(dirMatrix, 3).slice(0, 20); // Обмежуємо до 20 шляхів для читабельності
-            paths3.forEach(path => console.log(`   ${path.join(' -> ')}`));
+            console.log("\nШляхи довжини 2:");
+            for (let i = 0; i < n; i++)
+                for (let j = 0; j < n; j++)
+                    if (A2[i][j] > 0)                // існує хоча б один шлях
+                        for (let m = 0; m < n; m++)
+                            if (dirMatrix[i][m] && dirMatrix[m][j])
+                                console.log(`  ${i + 1} → ${m + 1} → ${j + 1}`);
+
+            console.log("\nШляхи довжини 3:");
+            for (let i = 0; i < n; i++)
+                for (let j = 0; j < n; j++)
+                    if (A3[i][j] > 0)
+                        for (let m = 0; m < n; m++) if (dirMatrix[i][m])
+                            for (let p = 0; p < n; p++)
+                                if (dirMatrix[m][p] && dirMatrix[p][j])
+                                    console.log(`  ${i + 1} → ${m + 1} → ${p + 1} → ${j + 1}`);
+
 
             const R = transitiveClosure(dirMatrix);
             printMatrix(R, '\n3) Матриця досяжності');
@@ -692,7 +664,6 @@ console.log(`   ${isRegular(undirDeg) ? 'так' : 'ні'}${isRegular(undirDeg)?
         }
     };
 
-    // Початково відображаємо орієнтований граф
     drawGraph(dirMatrix, true);
     console.log(`Граф ініціалізовано в режимі ${mode} (k = ${selectedK.toFixed(2)})`);
     console.log(`Загальна кількість вершин: ${n}`);
