@@ -148,146 +148,166 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.closePath();
         ctx.fill();
     }
-        function drawSelfLoop(nodeX, nodeY, directed, idx) {
-            // Keep existing parameters
-            let arcScale = 1.0;
-            let extraOffset = 0;
-            let forceInvert = false;
-            let angularSpan = 3;
+    function drawSelfLoop(nodeX, nodeY, directed, idx) {
+        // Keep existing parameters
+        let arcScale = 1.0;
+        let extraOffset = 0;
+        let forceInvert = false;
+        let angularSpan = 3;
 
-            if (idx === 0 || idx === 9) {
-                arcScale = 1;
-                extraOffset = 0;
-            }
-            if (idx === 6) {
-                forceInvert = true;
-            }
+        if (idx === 0 || idx === 9|| idx === 7) {
+            arcScale = 1;
+            extraOffset = 0;
+        }
+        if (idx === 6) {
+            forceInvert = true;
+        }
 
-            const arcR = RAD * 0.75 * arcScale;
-            const offset = RAD + 10 + extraOffset;
+        const arcR = RAD * 0.75 * arcScale;
+        const offset = RAD + 10 + extraOffset;
 
-            const dx = nodeX - centerX;
-            const dy = nodeY - centerY;
-            let theta = Math.atan2(dy, dx) * 180 / Math.PI;
-            if (theta < 0) theta += 360;
+        const dx = nodeX - centerX;
+        const dy = nodeY - centerY;
+        let theta = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (theta < 0) theta += 360;
 
-            let cx, cy, start, end, ccw;
-            if (theta >= 315 || theta < 45) {
-                cx = nodeX + offset;
-                cy = nodeY;
-                start = -135 * angularSpan * Math.PI / 180;
-                end = 135 * angularSpan * Math.PI / 180;
-                ccw = false;
-            } else if (theta >= 45 && theta < 135) {
-                cx = nodeX;
-                cy = nodeY + offset;
-                start = -135 * angularSpan * Math.PI / 180;
-                end = 45 * angularSpan * Math.PI / 180;
-                ccw = false;
-            } else if (theta >= 135 && theta < 225) {
-                cx = nodeX - offset;
-                cy = nodeY;
-                start = 45 * angularSpan * Math.PI / 180;
-                end = 225 * angularSpan * Math.PI / 180;
-                ccw = true;
-            } else {
-                cx = nodeX;
-                cy = nodeY - offset;
-                start = 135 * angularSpan * Math.PI / 180;
-                end = 315 * angularSpan * Math.PI / 180;
-                ccw = true;
-            }
+        let cx, cy, start, end, ccw;
+        if (theta >= 315 || theta < 45) {
+            cx = nodeX + offset;
+            cy = nodeY;
+            start = -135 * angularSpan * Math.PI / 180;
+            end = 135 * angularSpan * Math.PI / 180;
+            ccw = false;
+        } else if (theta >= 45 && theta < 135) {
+            cx = nodeX;
+            cy = nodeY + offset;
+            start = -135 * angularSpan * Math.PI / 180;
+            end = 45 * angularSpan * Math.PI / 180;
+            ccw = false;
+        } else if (theta >= 135 && theta < 225) {
+            cx = nodeX - offset;
+            cy = nodeY;
+            start = 45 * angularSpan * Math.PI / 180;
+            end = 225 * angularSpan * Math.PI / 180;
+            ccw = true;
+        } else {
+            cx = nodeX;
+            cy = nodeY - offset;
+            start = 135 * angularSpan * Math.PI / 180;
+            end = 315 * angularSpan * Math.PI / 180;
+            ccw = true;
+        }
 
-            if (forceInvert) ccw = !ccw;
+        if (forceInvert) ccw = !ccw;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, arcR, ccw ? end : start, ccw ? start : end, ccw);
+        ctx.stroke();
+
+        if (!directed) return;
+
+        // Handle specific vertices with custom arrow positions and rotations
+        if (idx === 3 || idx === 4)  { // Vertex 4
+            const arrowPositionFactor = ccw ? 0.25 : 0.77;
+            const arrowAngle = ccw ?
+                start + arrowPositionFactor * (end - start) :
+                start + arrowPositionFactor * (end - start);
+
+            const ax = cx + arcR * Math.cos(arrowAngle);
+            const ay = cy + arcR * Math.sin(arrowAngle);
+
+            const radialDir = Math.atan2(ay - cy, ax - cx);
+            const rotationAdjustment = Math.PI / 9; // 20 degrees rotation
+            const tangentDir = radialDir + Math.PI / 2 * (ccw ? -1 : 1) + rotationAdjustment;
+
+            const L = 0.55 * RAD * 0.75;
 
             ctx.beginPath();
-            ctx.arc(cx, cy, arcR, ccw ? end : start, ccw ? start : end, ccw);
-            ctx.stroke();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(
+                ax + L * Math.cos(tangentDir - Math.PI / 6),
+                ay + L * Math.sin(tangentDir - Math.PI / 6)
+            );
+            ctx.lineTo(
+                ax + L * Math.cos(tangentDir + Math.PI / 6),
+                ay + L * Math.sin(tangentDir + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fill();
+        }else if (idx === 7) { // Вершина 8
+            const arrowAngle = start + (end - start) * 0.5;
 
-            if (!directed) return;
+            // Координати стрілки на середині дуги
+            const ax = cx + arcR * Math.cos(arrowAngle);
+            const ay = cy + arcR * Math.sin(arrowAngle);
 
-            // Special handling for vertex 4
-            if (idx === 3) {
-                // Position near the vertex with a specific angle
-                const arrowPositionFactor = ccw ? 0.25 : 0.77;
-                const arrowAngle = ccw ?
-                    start + arrowPositionFactor * (end - start) :
-                    start + arrowPositionFactor * (end - start);
+            // Точна дотична до дуги — напрям стрілки
+            const tangentDir = arrowAngle + (ccw ? -1 : 1) * Math.PI / 2.2;
 
-                // Calculate position on the arc
-                const ax = cx + arcR * Math.cos(arrowAngle);
-                const ay = cy + arcR * Math.sin(arrowAngle);
-
-                // Calculate radial direction and rotate it
-                const radialDir = Math.atan2(ay - cy, ax - cx);
-
-                // Add rotation adjustment for vertex 4 (in radians)
-                const rotationAdjustment = Math.PI / 9; // 30 degrees rotation
-
-                // Create adjusted tangent direction with rotation
-                const tangentDir = radialDir + Math.PI/2 * (ccw ? -1 : 1) + rotationAdjustment;
-
-                const L = 0.55 * RAD * 0.75;
-
-                ctx.beginPath();
-                ctx.moveTo(ax, ay);
-                ctx.lineTo(
-                    ax + L * Math.cos(tangentDir - Math.PI/6),
-                    ay + L * Math.sin(tangentDir - Math.PI/6)
-                );
-                ctx.lineTo(
-                    ax + L * Math.cos(tangentDir + Math.PI/6),
-                    ay + L * Math.sin(tangentDir + Math.PI/6)
-                );
-                ctx.closePath();
-                ctx.fill();
-            } else if (idx === 9) { // Vertex 10
-                const factor = 1;
-                const arrowAngle = ccw ?
-                    start + factor * (end - start) :
-                    start + (1 - factor) * (end - start);
-
-                const ax = cx + arcR * Math.cos(arrowAngle);
-                const ay = cy + arcR * Math.sin(arrowAngle);
-
-                const arrowDir = Math.atan2(nodeY - ay, nodeX - ax);
-                const L = 0.55 * RAD * 0.75;
-
-                ctx.beginPath();
-                ctx.moveTo(ax, ay);
-                ctx.lineTo(
-                    ax - L * Math.cos(arrowDir - Math.PI/6),
-                    ay - L * Math.sin(arrowDir - Math.PI/6)
-                );
-                ctx.lineTo(
-                    ax - L * Math.cos(arrowDir + Math.PI/6),
-                    ay - L * Math.sin(arrowDir + Math.PI/6)
-                );
-                ctx.closePath();
-                ctx.fill();
-            } else {
-                // Regular calculation for other vertices
-                const arrowAngle = ccw ? start : end;
-                const ax = cx + arcR * Math.cos(arrowAngle);
-                const ay = cy + arcR * Math.sin(arrowAngle);
-
-                const arrowDir = Math.atan2(nodeY - ay, nodeX - ax);
-                const L = 0.55 * RAD * 0.75;
-
-                ctx.beginPath();
-                ctx.moveTo(ax, ay);
-                ctx.lineTo(
-                    ax - L * Math.cos(arrowDir - Math.PI/6),
-                    ay - L * Math.sin(arrowDir - Math.PI/6)
-                );
-                ctx.lineTo(
-                    ax - L * Math.cos(arrowDir + Math.PI/6),
-                    ay - L * Math.sin(arrowDir + Math.PI/6)
-                );
-                ctx.closePath();
-                ctx.fill();
-            }
+            const L = 0.55 * RAD * 0.75;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(
+                ax - L * Math.cos(tangentDir - Math.PI / 6),
+                ay - L * Math.sin(tangentDir - Math.PI / 6)
+            );
+            ctx.lineTo(
+                ax - L * Math.cos(tangentDir + Math.PI / 6),
+                ay - L * Math.sin(tangentDir + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fill();
         }
+
+
+
+        else if (idx === 9) { // Vertex 10
+            const factor = 1;
+            const arrowAngle = ccw ?
+                start + factor * (end - start) :
+                start + (1 - factor) * (end - start);
+
+            const ax = cx + arcR * Math.cos(arrowAngle);
+            const ay = cy + arcR * Math.sin(arrowAngle);
+
+            const arrowDir = Math.atan2(nodeY - ay, nodeX - ax);
+            const L = 0.55 * RAD * 0.75;
+
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(
+                ax - L * Math.cos(arrowDir - Math.PI/6),
+                ay - L * Math.sin(arrowDir - Math.PI/6)
+            );
+            ctx.lineTo(
+                ax - L * Math.cos(arrowDir + Math.PI/6),
+                ay - L * Math.sin(arrowDir + Math.PI/6)
+            );
+            ctx.closePath();
+            ctx.fill();
+        } else {
+            // Regular calculation for other vertices
+            const arrowAngle = ccw ? start : end;
+            const ax = cx + arcR * Math.cos(arrowAngle);
+            const ay = cy + arcR * Math.sin(arrowAngle);
+
+            const arrowDir = Math.atan2(nodeY - ay, nodeX - ax);
+            const L = 0.55 * RAD * 0.75;
+
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(
+                ax - L * Math.cos(arrowDir - Math.PI/6),
+                ay - L * Math.sin(arrowDir - Math.PI/6)
+            );
+            ctx.lineTo(
+                ax - L * Math.cos(arrowDir + Math.PI/6),
+                ay - L * Math.sin(arrowDir + Math.PI/6)
+            );
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
     function drawGraph(matrix, directed, nodeLabels = null) {
         // Видаляємо двонаправлені ребра, залишаючи лише однонаправлені
         const unidirectionalMatrix = directed ? removeBidirectionalEdges(matrix) : matrix;
