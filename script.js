@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const k1 = 1.0 - n3 * 0.01 - n4 * 0.01 - 0.3; // 0.68
     const k2 = 1.0 - n3 * 0.005 - n4 * 0.005 - 0.27; // 0.72
 
-    // LCG Park-Miller
     function genRand(seed) {
         const MOD = 2147483647;
         let val = seed % MOD;
@@ -19,19 +18,13 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    // Generate directed matrix for a given k, using seeded rand
     function genDirMatrix(k) {
-        const rand = genRand(seed); // Fix: Actually call genRand with the seed
-
-        // build raw [0,2)
-        const raw = Array.from({ length: n }, () =>
-            Array.from({ length: n }, () => rand() * 2)
+        const rand = genRand(seed);
+        const raw = Array.from({length: n}, () =>
+            Array.from({length: n}, () => rand() * 2)
         );
-
-        // threshold
         const dir = raw.map(row => row.map(v => (v * k >= 1 ? 1 : 0)));
 
-        // remove one of each bidirectional pair
         for (let i = 0; i < n; i++) {
             for (let j = i + 1; j < n; j++) {
                 if (dir[i][j] && dir[j][i]) {
@@ -44,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function genUndirMatrix(dir) {
-        const undir = Array.from({ length: n }, () => Array(n).fill(0));
+        const undir = Array.from({length: n}, () => Array(n).fill(0));
         for (let i = 0; i < n; i++) {
             for (let j = 0; j < n; j++) {
                 if (dir[i][j] || dir[j][i]) undir[i][j] = undir[j][i] = 1;
@@ -90,8 +83,6 @@ document.addEventListener("DOMContentLoaded", () => {
             };
         });
     }
-
-    const positions = generatePositions(n);
 
     function distanceToLine(p1, p2, p) {
         const A = p.x - p1.x, B = p.y - p1.y;
@@ -197,7 +188,6 @@ document.addEventListener("DOMContentLoaded", () => {
             start = Math.PI / 4;
             end = -Math.PI / 4;
         }
-        //into radians
         const s = start * Math.PI / 180;
         const e = end * Math.PI / 180;
 
@@ -225,18 +215,17 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.closePath();
         ctx.fill();
     }
+
     function drawGraph(matrix, directed, nodeLabels = null) {
         const unidirectionalMatrix = directed ? removeBidirectionalEdges(matrix) : matrix;
 
         const nodeCount = unidirectionalMatrix.length;
         const nodePos = generatePositions(nodeCount);
-        const labelSizeAdjustment = nodeLabels ? 10 : 0;
         ctx.clearRect(0, 0, w, h);
         ctx.strokeStyle = "#333";
         ctx.fillStyle = "#000";
         for (let i = 0; i < nodeCount; i++) {
             for (let j = 0; j < nodeCount; j++) {
-                // Перевірка наявності ребра з урахуванням петель
                 if (!unidirectionalMatrix[i][j]) continue;
                 if (!directed && j < i) continue;
 
@@ -363,28 +352,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return {hanging, isolated};
     }
 
-    function findPathsOfLength(A, K) {
-        const n = A.length, paths = [];
-
-        function dfs(path) {
-            if (path.length === K + 1) {
-                paths.push(path.map(v => v + 1));
-                return;
-            }
-            const u = path[path.length - 1] - 1;
-            for (let v = 0; v < n; v++) {
-                if (A[u][v]) {
-                    path.push(v + 1);
-                    dfs(path);
-                    path.pop();
-                }
-            }
-        }
-
-        for (let start = 1; start <= n; start++) dfs([start]);
-        return paths;
-    }
-
     function transitiveClosure(A) {
         const n = A.length;
         const R = A.map(row => [...row]);
@@ -473,7 +440,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const mode = askForMode();
     const selectedK = (mode === "k2") ? k2 : k1;
 
-    // Fix: Generate matrices after selecting k
     const dirMatrix = genDirMatrix(selectedK);
     const undirMatrix = genUndirMatrix(dirMatrix);
 
@@ -506,7 +472,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         printMatrix(S, "Матриця сильної зв'язності:");
-        console.log("\nКонденсований граф:");
         const C = buildCondensationGraph(dirMatrix, components);
         printMatrix(C, "Матриця конденсації:");
 
