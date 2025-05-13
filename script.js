@@ -501,7 +501,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const {hanging, isolated} = findHangingAndIsolated(undirDeg);
             console.log("\n4) Висячі вершини:");
             if (hanging.length > 0) {
-                hanging.forEach(v => console.log(`   - вершина ${v}`));
+                hanging.forEach(v => console.log(`    вершина ${v}`));
             } else {
                 console.log("   немає");
             }
