@@ -163,156 +163,68 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.fill();
     }
 
-    function drawSelfLoop(nodeX, nodeY, directed, idx) {
-        let arcScale = 1.0;
-        let extraOffset = 0;
-        let forceInvert = false;
-        let angularSpan = 3;
-
-        if (idx === 0 || idx === 9 || idx === 7) {
-            arcScale = 1;
-            extraOffset = 0;
-        }
-        if (idx === 6) {
-            forceInvert = true;
-        }
-
-        const arcR = RAD * 0.75 * arcScale;
-        const offset = RAD + 10 + extraOffset;
+    function drawSelfLoop(nodeX, nodeY, directed) {
+        const arcR = RAD * 0.75;
+        const offset = RAD + 10;
 
         const dx = nodeX - centerX;
         const dy = nodeY - centerY;
         let theta = Math.atan2(dy, dx) * 180 / Math.PI;
         if (theta < 0) theta += 360;
-
-        let cx, cy, start, end, ccw;
+        let cx, cy, start, end;
         if (theta >= 315 || theta < 45) {
+            // right
             cx = nodeX + offset;
             cy = nodeY;
-            start = -135 * angularSpan * Math.PI / 180;
-            end = 135 * angularSpan * Math.PI / 180;
-            ccw = false;
+            start = -135;
+            end = 135;
         } else if (theta >= 45 && theta < 135) {
+            // down
             cx = nodeX;
             cy = nodeY + offset;
-            start = -135 * angularSpan * Math.PI / 180;
-            end = 45 * angularSpan * Math.PI / 180;
-            ccw = false;
+            start = 225;
+            end = 135;
         } else if (theta >= 135 && theta < 225) {
+            // left
             cx = nodeX - offset;
             cy = nodeY;
-            start = 45 * angularSpan * Math.PI / 180;
-            end = 225 * angularSpan * Math.PI / 180;
-            ccw = true;
+            start = Math.PI / 4;
+            end = -45;
         } else {
+            // up
             cx = nodeX;
             cy = nodeY - offset;
-            start = 135 * angularSpan * Math.PI / 180;
-            end = 315 * angularSpan * Math.PI / 180;
-            ccw = true;
+            start = Math.PI / 4;
+            end = -Math.PI / 4;
         }
-
-        if (forceInvert) ccw = !ccw;
+        //into radians
+        const s = start * Math.PI / 180;
+        const e = end * Math.PI / 180;
 
         ctx.beginPath();
-        ctx.arc(cx, cy, arcR, ccw ? end : start, ccw ? start : end, ccw);
+        ctx.arc(cx, cy, arcR, s, end, false);
         ctx.stroke();
 
         if (!directed) return;
 
-        if (idx === 3 || idx === 4) { // Vertex 4
-            const arrowPositionFactor = ccw ? 0.25 : 0.77;
-            const arrowAngle = ccw ?
-                start + arrowPositionFactor * (end - start) :
-                start + arrowPositionFactor * (end - start);
+        const ax = cx + arcR * Math.cos(e);
+        const ay = cy + arcR * Math.sin(e);
+        const arrowAngle = Math.atan2(nodeY - ay, nodeX - ax);
+        const L = 0.55 * arcR;
 
-            const ax = cx + arcR * Math.cos(arrowAngle);
-            const ay = cy + arcR * Math.sin(arrowAngle);
-
-            const radialDir = Math.atan2(ay - cy, ax - cx);
-            const rotationAdjustment = Math.PI / 9; // 20 degrees rotation
-            const tangentDir = radialDir + Math.PI / 2 * (ccw ? -1 : 1) + rotationAdjustment;
-
-            const L = 0.55 * RAD * 0.75;
-
-            ctx.beginPath();
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(
-                ax + L * Math.cos(tangentDir - Math.PI / 6),
-                ay + L * Math.sin(tangentDir - Math.PI / 6)
-            );
-            ctx.lineTo(
-                ax + L * Math.cos(tangentDir + Math.PI / 6),
-                ay + L * Math.sin(tangentDir + Math.PI / 6)
-            );
-            ctx.closePath();
-            ctx.fill();
-        } else if (idx === 7) { // Вершина 8
-            const arrowAngle = start + (end - start) * 0.5;
-            const ax = cx + arcR * Math.cos(arrowAngle);
-            const ay = cy + arcR * Math.sin(arrowAngle);
-            const tangentDir = arrowAngle + (ccw ? -1 : 1) * Math.PI / 2.2;
-
-            const L = 0.55 * RAD * 0.75;
-            ctx.beginPath();
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(
-                ax - L * Math.cos(tangentDir - Math.PI / 6),
-                ay - L * Math.sin(tangentDir - Math.PI / 6)
-            );
-            ctx.lineTo(
-                ax - L * Math.cos(tangentDir + Math.PI / 6),
-                ay - L * Math.sin(tangentDir + Math.PI / 6)
-            );
-            ctx.closePath();
-            ctx.fill();
-        } else if (idx === 9) {
-            const factor = 1;
-            const arrowAngle = ccw ?
-                start + factor * (end - start) :
-                start + (1 - factor) * (end - start);
-
-            const ax = cx + arcR * Math.cos(arrowAngle);
-            const ay = cy + arcR * Math.sin(arrowAngle);
-
-            const arrowDir = Math.atan2(nodeY - ay, nodeX - ax);
-            const L = 0.55 * RAD * 0.75;
-
-            ctx.beginPath();
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(
-                ax - L * Math.cos(arrowDir - Math.PI / 6),
-                ay - L * Math.sin(arrowDir - Math.PI / 6)
-            );
-            ctx.lineTo(
-                ax - L * Math.cos(arrowDir + Math.PI / 6),
-                ay - L * Math.sin(arrowDir + Math.PI / 6)
-            );
-            ctx.closePath();
-            ctx.fill();
-        } else {
-            const arrowAngle = ccw ? start : end;
-            const ax = cx + arcR * Math.cos(arrowAngle);
-            const ay = cy + arcR * Math.sin(arrowAngle);
-
-            const arrowDir = Math.atan2(nodeY - ay, nodeX - ax);
-            const L = 0.55 * RAD * 0.75;
-
-            ctx.beginPath();
-            ctx.moveTo(ax, ay);
-            ctx.lineTo(
-                ax - L * Math.cos(arrowDir - Math.PI / 6),
-                ay - L * Math.sin(arrowDir - Math.PI / 6)
-            );
-            ctx.lineTo(
-                ax - L * Math.cos(arrowDir + Math.PI / 6),
-                ay - L * Math.sin(arrowDir + Math.PI / 6)
-            );
-            ctx.closePath();
-            ctx.fill();
-        }
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(
+            ax - L * Math.cos(arrowAngle - Math.PI / 6),
+            ay - L * Math.sin(arrowAngle - Math.PI / 6)
+        );
+        ctx.lineTo(
+            ax - L * Math.cos(arrowAngle + Math.PI / 6),
+            ay - L * Math.sin(arrowAngle + Math.PI / 6)
+        );
+        ctx.closePath();
+        ctx.fill();
     }
-
     function drawGraph(matrix, directed, nodeLabels = null) {
         const unidirectionalMatrix = directed ? removeBidirectionalEdges(matrix) : matrix;
 
@@ -329,7 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!directed && j < i) continue;
 
                 if (i === j) {
-                    drawSelfLoop(nodePos[i].x, nodePos[i].y, directed, i);
+                    drawSelfLoop(nodePos[i].x, nodePos[i].y, directed);
                     continue;
                 }
                 const p1 = nodePos[i], p2 = nodePos[j];
