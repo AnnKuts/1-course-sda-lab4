@@ -9,23 +9,42 @@ document.addEventListener("DOMContentLoaded", () => {
     const k1 = 1.0 - n3 * 0.01 - n4 * 0.01 - 0.3; // 0.68
     const k2 = 1.0 - n3 * 0.005 - n4 * 0.005 - 0.27; // 0.72
 
-    function genDirMatrix(k) {
-        return Array.from({ length: n }, (_, i) =>
-            Array.from({ length: n }, (_, j) => {
-                const base = i + j + 2;
-                const m = Math.floor(
-                    Math.abs(Math.sin((i + 1) * 17 + (j + 1) * 31 + seed * 13)) * 50
-                );
-                const random = base + 1000 * m;
-                return Math.floor(k * random) % 2;
-            })
-        );
+    // LCG Park-Miller
+    function genRand(seed) {
+        const MOD = 2147483647;
+        let val = seed % MOD;
+        return function () {
+            val = (val * 16807) % MOD;
+            return (val - 1) / MOD;
+        };
     }
 
+    // Generate directed matrix for a given k, using seeded rand
+    function genDirMatrix(k) {
+        const rand = genRand(seed); // Fix: Actually call genRand with the seed
 
+        // build raw [0,2)
+        const raw = Array.from({ length: n }, () =>
+            Array.from({ length: n }, () => rand() * 2)
+        );
+
+        // threshold
+        const dir = raw.map(row => row.map(v => (v * k >= 1 ? 1 : 0)));
+
+        // remove one of each bidirectional pair
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                if (dir[i][j] && dir[j][i]) {
+                    if (rand() < 0.5) dir[i][j] = 0;
+                    else dir[j][i] = 0;
+                }
+            }
+        }
+        return dir;
+    }
 
     function genUndirMatrix(dir) {
-        const undir = Array.from({length: n}, () => Array(n).fill(0));
+        const undir = Array.from({ length: n }, () => Array(n).fill(0));
         for (let i = 0; i < n; i++) {
             for (let j = 0; j < n; j++) {
                 if (dir[i][j] || dir[j][i]) undir[i][j] = undir[j][i] = 1;
@@ -528,8 +547,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return C;
     }
 
-    let selectedK = k1;
-    let mode = "k1";
 
     function askForMode() {
         let answer;
@@ -541,18 +558,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return answer;
     }
 
-    mode = askForMode();
-    selectedK = (mode === "k2") ? k2 : k1;
+    const mode = askForMode();
+    const selectedK = (mode === "k2") ? k2 : k1;
 
-    if (mode === "k2") {
-        btnUndirected.style.display = "none";
-        btnCondense.style.display = "inline-block";
-    } else {
-        btnUndirected.style.display = "inline-block";
-        btnCondense.style.display = "none";
-    }
+    // Fix: Generate matrices after selecting k
     const dirMatrix = genDirMatrix(selectedK);
     const undirMatrix = genUndirMatrix(dirMatrix);
+
+    document.getElementById('btnUndirected').style.display = (mode === 'k1') ? 'inline-block' : 'none';
+    document.getElementById('btnCondense').style.display = (mode === 'k2') ? 'inline-block' : 'none';
 
     document.getElementById("btnDirected").onclick = () => {
         console.clear();
@@ -667,7 +681,6 @@ document.addEventListener("DOMContentLoaded", () => {
             printMatrix(C, '\n6) Матриця конденсації');
         }
     };
-
     drawGraph(dirMatrix, true);
     console.log(`Граф ініціалізовано в режимі ${mode} (${mode} = ${selectedK.toFixed(2)})`);
 });
